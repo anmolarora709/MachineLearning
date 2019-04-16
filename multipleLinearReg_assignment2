@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import numpy as np 
+import pandas as pd 
+import seaborn as sns
+
+
+ 
+dataset=pd.read_csv('Ecommerce Customers.csv')
+X=dataset.iloc[:,[3,4,5,6]]
+y=dataset.iloc[:,-1]
+
+
+sns.heatmap(dataset.isnull(),yticklabels=False,cbar=False,cmap='viridis')
+
+dataset.corr()
+
+
+from sklearn.model_selection import train_test_split
+X_train,X_test,y_train,y_test=train_test_split(X,y,test_size=0.2)
+
+
+from sklearn.linear_model import LinearRegression 
+regressor=LinearRegression()
+regressor.fit(X_train,y_train)
+y_pred=regressor.predict(X_test)
+
+
+
+from sklearn.model_selection import cross_val_score
+accuracies=cross_val_score(estimator=regressor,X=X_train,y=y_train,cv=10)
+model_accuracy=accuracies.mean()
+model_std=accuracies.std()
+
+
+error_residual=pd.DataFrame(y_test-y_pred)
+error_residual.reset_index(inplace = True)
+
+
+Linearity_test_df = pd.DataFrame(X_test)
+Linearity_test_df['Residual'] = error_residual['Yearly Amount Spent']
+endogenity_check = Linearity_test_df.corr()
+
+
+
+from sklearn.metrics import mean_squared_error, r2_score
+print("Mean squared error: {}".format(mean_squared_error(y_test, y_pred)))
+print("Variance score: {}".format(r2_score(y_test, y_pred)))
+
+
+
+import statsmodels.api as sm
+x = sm.add_constant(X)
+
+
+
+results = sm.OLS(endog = y, exog=x).fit()
+results.summary()
+
+import scipy.stats as stats
+residual_test = np.column_stack([y_test,y_pred])
+residual_test = pd.DataFrame(residual_test)
+residual_test.columns='Y_test predictions'.split()
+sns.jointplot(x='Y_test', y='predictions', data=residual_test, kind='reg')
+stats.levene(residual_test['Y_test'], residual_test['predictions'])
+
+
+stats.shapiro(error_residual['Yearly Amount Spent'])
